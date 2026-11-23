@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import { IconoEscudo } from "./iconos.jsx";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Avatar } from "./comun.jsx";
+import { Icono, Marca } from "./iconos.jsx";
+import PanelChat from "./PanelChat.jsx";
 import PanelEstadisticas from "./PanelEstadisticas.jsx";
 import PanelMuro from "./PanelMuro.jsx";
 import PanelSimulador from "./PanelSimulador.jsx";
 import { crearSocket } from "./socket.js";
 
-const MOMENTOS = [
-  ["Tráfico normal", "Los mensajes variados se ven en verde."],
-  ["Ataque", "El muro se llena de avisos casi iguales."],
-  ["Detección", "Las cuentas del ataque pasan a rojo con su razón."],
-  ["Moderación", "Bloquea con un clic y mira la proporción de bots bloqueados."],
+const NAV = [
+  ["muro", "En vivo", "vivo"],
+  ["stats", "Estadísticas", "grafica"],
+  ["reglas", "Reglas", "reglas"],
 ];
+
+const MOMENTOS = ["Tráfico", "Ataque", "Detección", "Moderación"];
 
 const STATS_VACIAS = {
   comentarios_procesados: 0,
@@ -43,6 +46,25 @@ function momentoActual(stats) {
   return 1;
 }
 
+function canalesDe(comentarios) {
+  const mapa = new Map();
+  for (const comentario of comentarios) {
+    const previo = mapa.get(comentario.usuario);
+    if (!previo) mapa.set(comentario.usuario, { ...comentario, cantidad: 1 });
+    else previo.cantidad += 1;
+  }
+  return [...mapa.values()].slice(0, 16);
+}
+
+function coincide(comentario, filtro) {
+  if (!filtro) return true;
+  const texto = filtro.toLowerCase();
+  return (
+    comentario.usuario.toLowerCase().includes(texto) ||
+    comentario.texto.toLowerCase().includes(texto)
+  );
+}
+
 export default function App() {
   const socketRef = useRef(null);
   const anunciados = useRef(new Set());
@@ -57,6 +79,8 @@ export default function App() {
   const [intensidad, setIntensidad] = useState("media");
   const [aviso, setAviso] = useState("");
   const [anuncio, setAnuncio] = useState("");
+  const [vista, setVista] = useState("muro");
+  const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => {
     localStorage.setItem("sbg-nombre", nombre);
@@ -121,92 +145,303 @@ export default function App() {
       return;
     }
     emitir("simular_ataque", { cantidad_bots: bots, intensidad });
+    setVista("muro");
   }
 
   const paso = momentoActual(stats);
+  const canales = useMemo(() => canalesDe(comentarios), [comentarios]);
+  const visibles = useMemo(
+    () => comentarios.filter((comentario) => coincide(comentario, busqueda.trim())),
+    [comentarios, busqueda],
+  );
+  const alertas = useMemo(() => {
+    const bloqueado = new Set(stats.bloqueados || []);
+    const vistos = new Set();
+    let total = 0;
+    for (const comentario of comentarios) {
+      if (vistos.has(comentario.usuario)) continue;
+      vistos.add(comentario.usuario);
+      if (comentario.clasificacion !== "real" && !bloqueado.has(comentario.usuario)) total += 1;
+    }
+    return total;
+  }, [comentarios, stats.bloqueados]);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#0c1222] text-[#f4f7ff] min-[1200px]:h-dvh">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[#31415f] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <IconoEscudo />
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">SocialBotGuard</h1>
-            <p className="text-sm text-[#d5e0f5]">
-              Detección en tiempo real de spam repetitivo · UAGRM · INF221 · Grupo SX
-            </p>
-          </div>
+    <div className="flex min-h-dvh flex-col bg-[#1e1d24] text-[#f7f5fb] xl:h-dvh xl:flex-row xl:overflow-hidden">
+      <aside className="flex shrink-0 flex-col bg-[#6442a4] text-white xl:w-[240px]">
+        <div className="flex h-14 items-center px-4">
+          <Marca />
         </div>
-        <p className={conectado ? "text-[#b6f3cf]" : "text-[#ffc9d0]"}>
-          <span
-            className={`mr-2 inline-block size-2.5 rounded-full ${conectado ? "bg-[#3ddc84]" : "bg-[#ff5d73]"}`}
-            aria-hidden="true"
-          />
-          {conectado ? "En vivo" : "Sin conexión con el servidor"}
-        </p>
-      </header>
-
-      <p className="sr-only" aria-live="polite">
-        {anuncio}
-      </p>
-      {aviso && (
-        <p role="status" className="mx-3 mt-3 rounded-lg bg-[#243556] px-4 py-3">
-          {aviso}
-        </p>
-      )}
-
-      <ol className="mx-3 mt-3 grid shrink-0 grid-cols-2 gap-2 min-[1200px]:grid-cols-4">
-        {MOMENTOS.map(([titulo, detalle], indice) => {
-          const numero = indice + 1;
-          const activo = numero === paso;
-          return (
-            <li
-              key={titulo}
-              aria-current={activo ? "step" : undefined}
-              className={`rounded-xl border px-3 py-2 ${
-                activo ? "border-[#9dc1ff] bg-[#1a2d52]" : "border-[#31415f] bg-[#121a2e]"
+        <div className="flex gap-1 overflow-x-auto px-3 pb-3 xl:hidden">
+          {NAV.map(([id, titulo, icono]) => (
+            <button
+              key={id}
+              type="button"
+              aria-current={vista === id ? "page" : undefined}
+              onClick={() => setVista(id)}
+              className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-bold ${
+                vista === id ? "bg-white/20" : "bg-white/10"
               }`}
             >
-              <p className="text-sm text-[#d5e0f5]">Momento {numero}</p>
-              <p className="font-semibold">{titulo}</p>
-              <p className="text-sm text-[#d5e0f5]">{detalle}</p>
-            </li>
-          );
-        })}
-      </ol>
+              <Icono nombre={icono} className="size-4" />
+              {titulo}
+            </button>
+          ))}
+        </div>
+        <div className="hidden min-h-0 flex-1 flex-col xl:flex">
+          <nav className="flex flex-col gap-1 px-3" aria-label="Secciones">
+            {NAV.map(([id, titulo, icono]) => (
+              <button
+                key={id}
+                type="button"
+                aria-current={vista === id ? "page" : undefined}
+                onClick={() => setVista(id)}
+                className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-left text-[15px] font-bold ${
+                  vista === id ? "bg-white/20" : "hover:bg-white/10"
+                }`}
+              >
+                <Icono nombre={icono} />
+                {titulo}
+              </button>
+            ))}
+          </nav>
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto scroll px-3 pb-3">
+            <p className="mb-2 flex items-center gap-2 px-2 text-sm font-bold text-white/85">
+              <Icono nombre="usuarios" className="size-4" />
+              En el chat
+            </p>
+            {canales.length === 0 ? (
+              <p className="px-2 text-sm text-white/80">Aún no hay cuentas.</p>
+            ) : (
+              <ul className="flex flex-col gap-0.5">
+                {canales.map((canal) => {
+                  const activo = busqueda === canal.usuario;
+                  const estado =
+                    canal.clasificacion === "bot"
+                      ? "Bot"
+                      : canal.clasificacion === "sospechoso"
+                        ? "Sospechoso"
+                        : "Real";
+                  return (
+                    <li key={canal.usuario}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVista("muro");
+                          setBusqueda((actual) => (actual === canal.usuario ? "" : canal.usuario));
+                        }}
+                        aria-pressed={activo}
+                        className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left ${
+                          activo ? "bg-white/20" : "hover:bg-white/10"
+                        }`}
+                      >
+                        <Avatar nombre={canal.usuario} tam="sm" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold">{canal.usuario}</span>
+                          <span className="block text-xs text-white/80">{estado}</span>
+                        </span>
+                        <span className="text-xs font-semibold tabular">{canal.cantidad}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <div className="shrink-0 border-t border-white/15 p-3">
+            <PanelSimulador
+              conectado={conectado}
+              cantidad={cantidad}
+              setCantidad={setCantidad}
+              intensidad={intensidad}
+              setIntensidad={setIntensidad}
+              ritmos={ritmos}
+              ataqueActivo={Boolean(stats.ataque_activo)}
+              onAtacar={atacar}
+              onDetener={() => emitir("detener_ataque")}
+            />
+          </div>
+        </div>
+        <details className="border-t border-white/15 px-3 py-2 xl:hidden">
+          <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-bold">
+            <Icono nombre="rayo" className="size-4" />
+            Ataque
+          </summary>
+          <div className="pb-3">
+            <PanelSimulador
+              conectado={conectado}
+              cantidad={cantidad}
+              setCantidad={setCantidad}
+              intensidad={intensidad}
+              setIntensidad={setIntensidad}
+              ritmos={ritmos}
+              ataqueActivo={Boolean(stats.ataque_activo)}
+              onAtacar={atacar}
+              onDetener={() => emitir("detener_ataque")}
+            />
+          </div>
+        </details>
+      </aside>
 
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 min-[1200px]:grid-cols-[320px_minmax(0,1fr)_360px]">
-        <PanelSimulador
-          conectado={conectado}
-          nombre={nombre}
-          setNombre={setNombre}
-          texto={texto}
-          setTexto={setTexto}
-          cantidad={cantidad}
-          setCantidad={setCantidad}
-          intensidad={intensidad}
-          setIntensidad={setIntensidad}
-          ritmos={ritmos}
-          ataqueActivo={Boolean(stats.ataque_activo)}
-          onEnviar={enviar}
-          onAtacar={atacar}
-          onDetener={() => emitir("detener_ataque")}
-        />
-        <PanelMuro
-          comentarios={comentarios}
-          bloqueados={stats.bloqueados || []}
-          nombrePropio={nombre.trim()}
-          onBloquear={(usuario) => emitir("bloquear", { usuario })}
-        />
-        <PanelEstadisticas
-          stats={stats}
-          umbrales={umbrales}
-          conectado={conectado}
-          onConfigurar={(datos) => emitir("configurar_umbrales", datos)}
-          onReiniciar={() => emitir("reiniciar")}
-          onDesbloquear={(usuario) => emitir("desbloquear", { usuario })}
-        />
-      </main>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="flex shrink-0 flex-col gap-2 bg-[#26222c] px-3 py-2 xl:h-14 xl:flex-row xl:items-center xl:gap-3 xl:px-4 xl:py-0">
+          <label className="flex h-11 w-full min-w-0 items-center gap-2 rounded-lg bg-[#1e1d24] px-3 xl:w-auto xl:max-w-xl xl:flex-1">
+            <Icono nombre="buscar" className="size-5 text-[#d2ccdf]" />
+            <span className="sr-only">Buscar en el chat</span>
+            <input
+              value={busqueda}
+              onChange={(evento) => setBusqueda(evento.target.value)}
+              placeholder="Buscar en el chat"
+              className="w-full bg-transparent text-[#f7f5fb] outline-none placeholder:text-[#b7b0c8]"
+            />
+            {busqueda && (
+              <button type="button" aria-label="Limpiar búsqueda" onClick={() => setBusqueda("")} className="flex size-8 items-center justify-center">
+                <Icono nombre="cerrar" className="size-4" />
+              </button>
+            )}
+          </label>
+          <p className={`hidden items-center gap-2 text-sm font-semibold sm:flex ${conectado ? "text-[#8ee8a8]" : "text-[#ffb3bc]"}`}>
+            <span className={`size-2.5 rounded-full ${conectado ? "bg-[#3cb43a]" : "bg-[#e91916]"}`} aria-hidden="true" />
+            {conectado ? "En vivo" : "Sin conexión"}
+          </p>
+          <div className="flex items-center gap-2 xl:ml-auto">
+            <label className="text-right">
+              <span className="sr-only">Tu nombre</span>
+              <input
+                value={nombre}
+                onChange={(evento) => setNombre(evento.target.value)}
+                maxLength={24}
+                autoComplete="nickname"
+                placeholder="Visitante"
+                className="w-28 bg-transparent text-right text-sm font-bold outline-none placeholder:text-[#b7b0c8] sm:w-36"
+              />
+              <span className="block text-xs font-semibold text-[#8ee8a8]">en línea</span>
+            </label>
+            <Avatar nombre={nombre || "Visitante"} />
+            <button
+              type="button"
+              aria-label={alertas ? `${alertas} alertas` : "Sin alertas"}
+              onClick={() => setVista("muro")}
+              className="relative flex size-11 items-center justify-center rounded-lg hover:bg-white/10"
+            >
+              <Icono nombre="campana" />
+              {alertas > 0 && (
+                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e91916] px-1 text-[10px] font-bold">
+                  {alertas > 9 ? "9+" : alertas}
+                </span>
+              )}
+            </button>
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
+          <div className="relative flex min-h-[68dvh] min-w-0 flex-1 flex-col xl:min-h-0">
+            <p className="sr-only" aria-live="polite">
+              {anuncio}
+            </p>
+            <div className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-[#1e1d24] px-4 py-2">
+              <Avatar nombre="SocialBotGuard" tam="lg" />
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-lg font-bold leading-tight">SocialBotGuard</h1>
+                <p className="truncate text-sm text-[#d2ccdf]">
+                  Momento {paso}: {MOMENTOS[paso - 1]}
+                </p>
+              </div>
+              <div role="tablist" aria-label="Vistas del directo" className="hidden items-center gap-1 xl:flex">
+                {NAV.map(([id, titulo, icono]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    id={`tab-${id}`}
+                    aria-selected={vista === id}
+                    aria-controls="panel-vista"
+                    onClick={() => setVista(id)}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold ${
+                      vista === id ? "bg-white/10 text-white" : "text-[#d2ccdf] hover:bg-white/5"
+                    }`}
+                  >
+                    <Icono nombre={icono} className="size-4" />
+                    {titulo}
+                  </button>
+                ))}
+              </div>
+              <span
+                className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-bold sm:px-4 ${
+                  conectado ? "bg-[#e91916]" : "bg-[#4a4458]"
+                }`}
+              >
+                <span className="size-2.5 rounded-full bg-white" aria-hidden="true" />
+                {conectado ? "EN VIVO" : "SIN SEÑAL"}
+              </span>
+            </div>
+            {aviso && (
+              <p role="status" className="shrink-0 bg-[#4a4458] px-4 py-2 text-sm font-semibold">
+                {aviso}
+              </p>
+            )}
+
+            <div id="panel-vista" role="tabpanel" aria-labelledby={`tab-${vista}`} className="flex min-h-0 flex-1 flex-col">
+              {vista === "muro" ? (
+                <PanelMuro
+                  comentarios={visibles}
+                  bloqueados={stats.bloqueados || []}
+                  nombrePropio={nombre.trim()}
+                  onBloquear={(usuario) => emitir("bloquear", { usuario })}
+                />
+              ) : (
+                <PanelEstadisticas
+                  seccion={vista === "reglas" ? "reglas" : "graficos"}
+                  stats={stats}
+                  umbrales={umbrales}
+                  conectado={conectado}
+                  onConfigurar={(datos) => emitir("configurar_umbrales", datos)}
+                  onReiniciar={() => emitir("reiniciar")}
+                  onDesbloquear={(usuario) => emitir("desbloquear", { usuario })}
+                />
+              )}
+            </div>
+
+            <footer className="flex h-14 shrink-0 items-center gap-3 overflow-hidden border-t border-white/10 bg-[#26222c] px-4">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#6442a4]">
+                <Icono nombre="escudo" className="size-5" />
+              </span>
+              <p className="hidden truncate font-bold sm:block">Detección de spam en vivo</p>
+              <ul className="flex min-w-0 gap-2 overflow-hidden">
+                <Etiqueta icono="rayo" texto="Frecuencia" />
+                <Etiqueta icono="copiar" texto="Similitud" />
+                <Etiqueta icono="enlace" texto="Patrones" />
+              </ul>
+              <p className="ml-auto inline-flex shrink-0 items-center gap-2 text-lg font-bold text-[#ff8d8d] tabular">
+                <Icono nombre="usuarios" className="size-5" />
+                {comentarios.length}
+              </p>
+            </footer>
+          </div>
+
+          <aside className="flex h-[48dvh] min-h-0 shrink-0 flex-col border-white/10 xl:h-auto xl:w-[340px] xl:self-stretch xl:border-l">
+            <PanelChat
+              comentarios={visibles}
+              bloqueados={stats.bloqueados || []}
+              conectado={conectado}
+              texto={texto}
+              setTexto={setTexto}
+              onEnviar={enviar}
+            />
+          </aside>
+        </div>
+      </div>
     </div>
   );
 }
+
+function Etiqueta({ icono, texto }) {
+  return (
+    <li className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-[#6442a4] px-3 text-sm font-semibold">
+      <Icono nombre={icono} className="size-3.5" />
+      {texto}
+    </li>
+  );
+}
+
+

@@ -1,151 +1,116 @@
+import { Icono } from "./iconos.jsx";
+
 const INTENSIDADES = [
-  ["baja", "Baja"],
-  ["media", "Media"],
-  ["alta", "Alta"],
+  ["baja", "Baja", "senal"],
+  ["media", "Media", "rayo"],
+  ["alta", "Alta", "alerta"],
 ];
 
 export default function PanelSimulador({
   conectado,
-  nombre,
-  setNombre,
-  texto,
-  setTexto,
   cantidad,
   setCantidad,
   intensidad,
   setIntensidad,
   ritmos,
   ataqueActivo,
-  onEnviar,
   onAtacar,
   onDetener,
 }) {
-  return (
-    <section className="flex h-[78dvh] min-h-0 flex-col overflow-hidden rounded-2xl border border-[#31415f] bg-[#121a2e] min-[1200px]:h-full">
-      <header className="shrink-0 border-b border-[#31415f] px-4 py-3">
-        <h2 className="text-lg font-semibold">Simulador de chat</h2>
-        <p className="text-sm text-[#d5e0f5]">Escribe como visitante o lanza el ataque sintético.</p>
-      </header>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(evento) => {
-            evento.preventDefault();
-            onEnviar();
-          }}
-        >
-          <label className="flex flex-col gap-1">
-            <span className="font-medium">Tu nombre</span>
-            <input
-              value={nombre}
-              onChange={(evento) => setNombre(evento.target.value)}
-              maxLength={24}
-              autoComplete="nickname"
-              placeholder="Visitante"
-              className="min-h-11 rounded-lg border border-[#31415f] bg-[#0c1222] px-3 text-[#f4f7ff] placeholder:text-[#9aabca]"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-medium">Comentario</span>
-            <textarea
-              value={texto}
-              onChange={(evento) => setTexto(evento.target.value)}
-              onKeyDown={(evento) => {
-                if (evento.key === "Enter" && !evento.shiftKey) {
-                  evento.preventDefault();
-                  onEnviar();
-                }
-              }}
-              rows={3}
-              maxLength={500}
-              placeholder="Escribe un mensaje para el muro"
-              className="rounded-lg border border-[#31415f] bg-[#0c1222] px-3 py-2 text-[#f4f7ff] placeholder:text-[#9aabca]"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={!conectado || texto.trim() === ""}
-            className="min-h-11 rounded-lg bg-[#1d4ed8] px-4 font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#243556]"
-          >
-            Enviar comentario
-          </button>
-        </form>
+  function ajustar(delta) {
+    const actual = Number(cantidad);
+    const base = Number.isFinite(actual) ? actual : 1;
+    setCantidad(String(Math.min(30, Math.max(1, base + delta))));
+  }
 
-        <form
-          className="flex flex-col gap-3 border-t border-[#31415f] pt-4"
-          onSubmit={(evento) => {
-            evento.preventDefault();
-            onAtacar();
-          }}
+  return (
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(evento) => {
+        evento.preventDefault();
+        onAtacar();
+      }}
+    >
+      <h2 className="flex items-center gap-2 text-sm font-bold">
+        <Icono nombre="rayo" className="size-4" />
+        Ataque
+      </h2>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Menos bots"
+          onClick={() => ajustar(-1)}
+          className="flex size-11 items-center justify-center rounded-lg bg-white/15 hover:bg-white/25"
         >
-          <h3 className="font-semibold">Ataque de spam repetitivo</h3>
-          <p className="text-sm text-[#d5e0f5]">
-            Crea cuentas ficticias que publican variantes de un mismo aviso: signos, emoticonos,
-            una letra cambiada, espacios dobles o mayúsculas alternadas.
-          </p>
-          <label className="flex flex-col gap-1">
-            <span className="font-medium">Cantidad de bots</span>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              value={cantidad}
-              onChange={(evento) => setCantidad(evento.target.value)}
-              className="min-h-11 rounded-lg border border-[#31415f] bg-[#0c1222] px-3 tabular"
-            />
-          </label>
-          <fieldset className="flex flex-col gap-2">
-            <legend className="font-medium">Intensidad</legend>
-            <div className="grid grid-cols-3 gap-2">
-              {INTENSIDADES.map(([id, titulo]) => (
-                <label
-                  key={id}
-                  className={`flex min-h-11 cursor-pointer flex-col items-center justify-center rounded-lg border px-2 text-center has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#9dc1ff] ${
-                    intensidad === id
-                      ? "border-[#9dc1ff] bg-[#1a2d52]"
-                      : "border-[#31415f] bg-[#0c1222]"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="intensidad"
-                    value={id}
-                    checked={intensidad === id}
-                    onChange={() => setIntensidad(id)}
-                    className="sr-only"
-                  />
-                  <span className="font-semibold">{titulo}</span>
-                  <span className="text-sm text-[#d5e0f5]">{ritmos[id] ?? "—"} msg/s</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <button
-            type="submit"
-            disabled={!conectado}
-            className="min-h-12 rounded-lg bg-[#1d4ed8] px-4 text-lg font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#243556]"
-          >
-            Simular Ataque de Bots
-          </button>
-          {ataqueActivo && (
-            <button
-              type="button"
-              onClick={onDetener}
-              className="min-h-11 rounded-lg border border-[#9dc1ff] px-4 font-semibold text-[#f4f7ff]"
-            >
-              Detener ataque
-            </button>
-          )}
-          <p className="text-sm text-[#d5e0f5]">
-            {ataqueActivo
-              ? "El ataque está en curso. Puedes reemplazarlo o detenerlo."
-              : "El tráfico de usuarios reales sigue activo junto con el ataque."}
-          </p>
-        </form>
-        <p className="mt-auto text-sm text-[#d5e0f5]">
-          Tráfico sintético y local. No se conecta a redes ni a cuentas reales.
-        </p>
+          <Icono nombre="menos" />
+        </button>
+        <label className="min-w-0 flex-1">
+          <span className="sr-only">Cantidad de bots</span>
+          <input
+            type="number"
+            min={1}
+            max={30}
+            value={cantidad}
+            onChange={(evento) => setCantidad(evento.target.value)}
+            className="h-11 w-full rounded-lg border border-white/25 bg-black/25 text-center text-lg font-bold tabular text-white"
+          />
+        </label>
+        <button
+          type="button"
+          aria-label="Más bots"
+          onClick={() => ajustar(1)}
+          className="flex size-11 items-center justify-center rounded-lg bg-white/15 hover:bg-white/25"
+        >
+          <Icono nombre="mas" />
+        </button>
       </div>
-    </section>
+      <fieldset>
+        <legend className="sr-only">Intensidad</legend>
+        <div className="grid grid-cols-3 gap-2">
+          {INTENSIDADES.map(([id, titulo, icono]) => {
+            const activo = intensidad === id;
+            return (
+              <label
+                key={id}
+                title={`${ritmos[id] ?? "—"} mensajes por segundo`}
+                className={`flex min-h-11 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg px-1 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-white ${
+                  activo ? "bg-white text-[#4c2f86]" : "bg-white/15 text-white hover:bg-white/25"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="intensidad"
+                  value={id}
+                  checked={activo}
+                  onChange={() => setIntensidad(id)}
+                  className="sr-only"
+                />
+                <Icono nombre={icono} className="size-4" />
+                <span className="text-sm font-bold">{titulo}</span>
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
+      <button
+        type="submit"
+        disabled={!conectado}
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-white px-3 text-base font-bold text-[#4c2f86] disabled:cursor-not-allowed disabled:bg-white/40"
+      >
+        <Icono nombre="rayo" className="size-5" />
+        Simular ataque
+      </button>
+      {ataqueActivo && (
+        <button
+          type="button"
+          onClick={onDetener}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white px-3 font-bold"
+        >
+          <Icono nombre="ban" className="size-4" />
+          Detener
+        </button>
+      )}
+      <p className="text-sm text-white/85">Tráfico local, sin cuentas reales.</p>
+    </form>
   );
 }
