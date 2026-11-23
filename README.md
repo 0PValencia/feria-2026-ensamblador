@@ -55,25 +55,12 @@ cd ..
 .venv\Scripts\uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8000
 ```
 
-## Demostración en la feria
-
-1. Al abrir la página ya hay tráfico de usuarios reales. Los mensajes variados quedan en verde.
-2. Elegir la cantidad de bots y la intensidad, y pulsar **Simular Ataque de Bots**. Alta publica 20 mensajes por segundo.
-3. El muro marca en rojo las cuentas que repiten el aviso y muestra la razón. Un aviso aislado con enlaces no alcanza para clasificarlo como bot.
-4. Pulsar **Bloquear** en una alerta. Esa cuenta deja de aparecer y el gráfico de la derecha compara usuarios reales con bots bloqueados. **Desbloquear** está en la lista de cuentas bloqueadas.
-
-Los umbrales y **Reiniciar simulación** están en el panel de estadísticas. Reiniciar pide confirmación.
-
-Para escribir en el muro, completar el nombre y el comentario del panel izquierdo. Enter envía; Mayús+Enter baja de línea.
-
 ## Pruebas
 
 ```bash
 cd backend
 python -m pytest
 ```
-
-Cubren los siete escenarios del plan de pruebas: usuario real, usuario muy activo, repetición exacta, variaciones, patrones, bot lento y el ritmo de análisis. También el flujo de Socket.IO: comentar, detectar, bloquear y descartar.
 
 ## Alcance
 
