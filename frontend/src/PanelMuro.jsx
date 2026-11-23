@@ -1,14 +1,5 @@
-const TARJETA = {
-  real: "border-[#1f9d57] bg-[#102418]",
-  sospechoso: "border-[#e0a100] bg-[#2a2208]",
-  bot: "border-[#ff8b98] pulso-bot",
-};
-
-const INSIGNIA = {
-  real: "bg-[#146c3a] text-[#e9fff2]",
-  sospechoso: "bg-[#8a6208] text-[#fff6dd]",
-  bot: "bg-[#a3162a] text-[#fff1f3]",
-};
+import { Avatar, ChipRazon, colorNombre } from "./comun.jsx";
+import { Icono } from "./iconos.jsx";
 
 function evidencia(razon, reglas) {
   if (!reglas) return razon;
@@ -30,7 +21,8 @@ function evidencia(razon, reglas) {
   return razon;
 }
 
-function alertasActivas(comentarios, bloqueado) {
+export function alertasActivas(comentarios, bloqueados) {
+  const bloqueado = new Set(bloqueados);
   const alertas = [];
   const vistos = new Set();
   for (const comentario of comentarios) {
@@ -39,113 +31,89 @@ function alertasActivas(comentarios, bloqueado) {
     if (comentario.clasificacion === "real" || bloqueado.has(comentario.usuario)) continue;
     alertas.push(comentario);
   }
-  return alertas;
+  return alertas.sort((a, b) => b.riesgo - a.riesgo);
 }
 
-export default function PanelMuro({ comentarios, bloqueados, nombrePropio, onBloquear }) {
-  const bloqueado = new Set(bloqueados);
-  const alertas = alertasActivas(comentarios, bloqueado);
+export default function PanelMuro({ alertas, filtro, onLimpiarFiltro, onBloquear }) {
   return (
-    <section className="flex h-[78dvh] min-h-0 flex-col overflow-hidden rounded-2xl border border-[#31415f] bg-[#121a2e] min-[1200px]:h-full">
-      <header className="shrink-0 border-b border-[#31415f] px-4 py-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-semibold">Muro de moderación</h2>
-            <p className="text-sm text-[#d5e0f5]">Los mensajes más recientes aparecen arriba.</p>
-          </div>
-          <p className="text-sm text-[#d5e0f5] tabular">{comentarios.length} en pantalla</p>
-        </div>
-        <ul className="mt-2 flex flex-wrap gap-2 text-sm">
-          <li className="rounded-full bg-[#146c3a] px-3 py-1 text-[#e9fff2]">Verde: usuario real</li>
-          <li className="rounded-full bg-[#8a6208] px-3 py-1 text-[#fff6dd]">Ámbar: sospechoso</li>
-          <li className="rounded-full bg-[#a3162a] px-3 py-1 text-[#fff1f3]">Rojo: bot</li>
-        </ul>
-        {alertas.length > 0 && (
-          <ul className="mt-2 flex max-h-32 flex-col gap-1 overflow-y-auto">
-            {alertas.map((alerta) => (
-              <li key={alerta.usuario} className="flex items-center justify-between gap-2 rounded-lg bg-[#0c1222] px-2 py-1">
-                <span className="text-sm">
-                  {alerta.usuario} · {alerta.etiqueta}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Bloquear a ${alerta.usuario}`}
-                  onClick={() => onBloquear(alerta.usuario)}
-                  className="min-h-11 shrink-0 rounded-lg bg-[#9f1239] px-3 font-semibold text-white"
-                >
-                  Bloquear
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        {comentarios.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-[#31415f] px-4 py-8 text-center text-[#d5e0f5]">
-            Aún no hay comentarios. El tráfico sintético de usuarios reales empieza con el servidor.
-          </p>
-        ) : (
-          <ol className="flex flex-col gap-2">
-            {comentarios.map((comentario) => {
-              const clase = comentario.clasificacion;
-              const esAlerta = clase === "sospechoso" || clase === "bot";
-              const yaBloqueado = bloqueado.has(comentario.usuario);
-              return (
-                <li key={comentario.id}>
-                  <article
-                    className={`rounded-xl border px-3 py-3 ${TARJETA[clase] || TARJETA.real}`}
-                    aria-label={`${comentario.etiqueta}. ${comentario.usuario}`}
-                  >
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="font-semibold">
-                        {comentario.usuario}
-                        {comentario.usuario === nombrePropio ? (
-                          <span className="ml-2 text-sm font-medium text-[#d5e0f5]">Tu mensaje</span>
-                        ) : null}
-                      </p>
-                      <time className="text-sm text-[#d5e0f5] tabular">{comentario.hora}</time>
-                    </div>
-                    <p className="mt-1 break-all">{comentario.texto}</p>
-                    <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-sm font-semibold ${INSIGNIA[clase]}`}>
-                      {comentario.etiqueta}
-                    </p>
-                    {comentario.razones?.length > 0 && (
-                      <ul className="mt-2 flex flex-col gap-1">
-                        {comentario.razones.map((razon) => (
-                          <li key={razon} className="text-sm text-[#f4f7ff]">
-                            Razón: {evidencia(razon, comentario.reglas)}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {comentario.mantenido && comentario.riesgo !== comentario.riesgo_mensaje && (
-                      <p className="mt-1 text-sm text-[#d5e0f5]">
-                        Este mensaje, por sí solo, suma {comentario.riesgo_mensaje} %.
-                      </p>
-                    )}
-                    {esAlerta && (
-                      <div className="mt-3">
-                        {yaBloqueado ? (
-                          <p className="text-sm font-semibold">Cuenta bloqueada</p>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => onBloquear(comentario.usuario)}
-                            className="min-h-11 rounded-lg bg-[#9f1239] px-4 font-semibold text-white"
-                          >
-                            Bloquear
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </article>
-                </li>
-              );
-            })}
-          </ol>
+    <section aria-labelledby="titulo-cola" className="px-4 pb-8 pt-2 sm:px-6">
+      <div className="mb-3 flex items-center gap-3">
+        <h2 id="titulo-cola" className="flex items-center gap-2 text-base font-bold">
+          <Icono nombre="escudo" className="size-5 text-[#bf94ff]" />
+          Cola de moderación
+        </h2>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-bold tabular ${
+            alertas.length ? "bg-[#eb0400] text-white" : "bg-[#2f2f35] text-[#adadb8]"
+          }`}
+        >
+          {alertas.length}
+        </span>
+        {filtro && (
+          <button
+            type="button"
+            onClick={onLimpiarFiltro}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[#2f2f35] px-3 py-1 text-xs font-semibold hover:bg-[#3a3a3d]"
+          >
+            Filtro: {filtro}
+            <Icono nombre="cerrar" className="size-3.5" />
+          </button>
         )}
       </div>
+
+      {alertas.length === 0 ? (
+        <div className="flex items-center gap-3 rounded-md border border-dashed border-[#2f2f35] px-4 py-5 text-sm text-[#adadb8]">
+          <Icono nombre="check" className="size-5 text-[#00c76f]" />
+          {filtro ? "Ninguna alerta coincide con el filtro." : "Sin alertas. Todo el tráfico parece real."}
+        </div>
+      ) : (
+        <ol className="grid gap-2 lg:grid-cols-2">
+          {alertas.map((alerta) => {
+            const bot = alerta.clasificacion === "bot";
+            return (
+              <li
+                key={alerta.usuario}
+                className={`flex gap-3 rounded-md border-l-4 bg-[#1f1f23] p-3 ${bot ? "border-[#eb0400] alerta-bot" : "border-[#ffb31a]"}`}
+              >
+                <Avatar nombre={alerta.usuario} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-bold" style={{ color: colorNombre(alerta.usuario) }}>
+                      {alerta.usuario}
+                    </p>
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-px text-[11px] font-extrabold uppercase tabular ${
+                        bot ? "bg-[#eb0400] text-white" : "bg-[#ffb31a] text-[#18181b]"
+                      }`}
+                    >
+                      {bot ? "Bot" : "Sospechoso"} {alerta.riesgo}%
+                    </span>
+                    <time className="ml-auto shrink-0 text-xs text-[#7a7a85] tabular">{alerta.hora}</time>
+                  </div>
+                  <p className="mt-0.5 truncate text-sm text-[#adadb8]" title={alerta.texto}>
+                    “{alerta.texto}”
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {alerta.razones?.map((razon) => (
+                      <ChipRazon key={razon} razon={razon} detalle={evidencia(razon, alerta.reglas)} />
+                    ))}
+                    <span className="sr-only">{alerta.etiqueta}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onBloquear(alerta.usuario)}
+                  aria-label={`Bloquear a ${alerta.usuario}`}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 self-center rounded-md bg-[#2f2f35] px-3 text-sm font-bold text-[#efeff1] hover:bg-[#eb0400]"
+                >
+                  <Icono nombre="ban" className="size-4" />
+                  <span className="hidden sm:inline">Bloquear</span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </section>
   );
 }

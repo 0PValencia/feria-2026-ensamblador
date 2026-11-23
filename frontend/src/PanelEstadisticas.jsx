@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
   ArcElement,
   CategoryScale,
@@ -11,30 +11,31 @@ import {
   Tooltip,
 } from "chart.js";
 import { Doughnut, Line } from "react-chartjs-2";
+import { Icono } from "./iconos.jsx";
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler);
-ChartJS.defaults.color = "#d5e0f5";
-ChartJS.defaults.font.family = '"Segoe UI", "Helvetica Neue", sans-serif';
+ChartJS.defaults.color = "#adadb8";
+ChartJS.defaults.font.family = '"Open Sans", "Segoe UI", sans-serif';
 ChartJS.defaults.font.size = 13;
 
 const CAMPOS = [
-  ["ventana_segundos", "Ventana de frecuencia (segundos)", "0.5", false],
-  ["mensajes_maximos", "Mensajes permitidos en la ventana", "1", true],
-  ["similitud_umbral", "Similitud que debe superarse (0 a 1)", "0.05", false],
-  ["puntos_frecuencia", "Puntos por frecuencia", "1", true],
-  ["puntos_similitud", "Puntos por similitud", "1", true],
-  ["puntos_patrones", "Puntos por patrones", "1", true],
-  ["mayusculas_umbral", "Proporción de mayúsculas que debe superarse", "0.05", false],
-  ["umbral_sospechoso", "Desde este % es sospechoso", "1", true],
-  ["umbral_bot", "Desde este % es bot", "1", true],
-  ["ventana_observacion", "Ventana de observación (segundos)", "1", false],
+  ["ventana_segundos", "Ventana (s)", "0.5", false, "Tiempo durante el que se cuentan los mensajes seguidos de una misma cuenta. Una ventana más larga atrapa ráfagas más lentas, pero también puede marcar a usuarios muy activos."],
+  ["mensajes_maximos", "Mensajes en la ventana", "1", true, "Cuántos mensajes puede enviar una cuenta dentro de la ventana sin sumar riesgo. Si lo bajas, los bots se detectan antes; si lo subes, hay menos falsos positivos."],
+  ["similitud_umbral", "Similitud (0 a 1)", "0.05", false, "Qué tan parecido debe ser un mensaje a otro anterior de la misma cuenta para contarlo como repetido. 0 es totalmente distinto y 1 es idéntico; 0,8 detecta copias con pequeñas variaciones."],
+  ["puntos_frecuencia", "Puntos de frecuencia", "1", true, "Riesgo (en %) que se suma cuando la cuenta supera los mensajes permitidos en la ventana."],
+  ["puntos_similitud", "Puntos de similitud", "1", true, "Riesgo (en %) que se suma cuando el mensaje es casi idéntico a uno anterior de la misma cuenta."],
+  ["puntos_patrones", "Puntos de patrones", "1", true, "Riesgo (en %) que se suma si el mensaje tiene dos o más enlaces o demasiadas mayúsculas."],
+  ["mayusculas_umbral", "Mayúsculas (0 a 1)", "0.05", false, "Proporción de letras en mayúscula desde la que el mensaje cuenta como sospechoso (0,7 = 70 %). Solo se revisan mensajes con al menos 10 letras."],
+  ["umbral_sospechoso", "Sospechoso desde %", "1", true, "Riesgo mínimo para marcar la cuenta como sospechosa (ámbar). Por debajo, la cuenta se considera real."],
+  ["umbral_bot", "Bot desde %", "1", true, "Riesgo mínimo para marcar la cuenta como bot (rojo), mostrar la alerta y sugerir el bloqueo. Debe ser mayor que el umbral de sospechoso."],
+  ["ventana_observacion", "Observación (s)", "1", false, "Segundos que la cuenta conserva su riesgo más alto tras un mensaje sospechoso. Evita que un bot lento parezca limpio entre mensaje y mensaje."],
 ];
 
 function opcionesLinea(maximo) {
   const vertical = {
     beginAtZero: true,
-    ticks: { color: "#d5e0f5" },
-    grid: { color: "rgba(213, 224, 245, 0.12)" },
+    ticks: { color: "#adadb8" },
+    grid: { color: "rgba(210, 204, 223, 0.12)" },
   };
   if (typeof maximo === "number") vertical.max = maximo;
   return {
@@ -44,8 +45,8 @@ function opcionesLinea(maximo) {
     plugins: { legend: { display: false } },
     scales: {
       x: {
-        ticks: { maxTicksLimit: 6, color: "#d5e0f5" },
-        grid: { color: "rgba(213, 224, 245, 0.12)" },
+        ticks: { maxTicksLimit: 6, color: "#adadb8" },
+        grid: { color: "rgba(210, 204, 223, 0.12)" },
       },
       y: vertical,
     },
@@ -59,6 +60,7 @@ function etiquetas(cantidad) {
 }
 
 export default function PanelEstadisticas({
+  seccion,
   stats,
   umbrales,
   conectado,
@@ -81,15 +83,12 @@ export default function PanelEstadisticas({
 
   const dona = useMemo(
     () => ({
-      labels: [
-        `Usuarios reales (${reales})`,
-        `Bots bloqueados (${bloqueadosBots})`,
-      ],
+      labels: [`Reales (${reales})`, `Bots bloqueados (${bloqueadosBots})`],
       datasets: [
         {
           data: [reales, bloqueadosBots],
           backgroundColor: ["#1f9d57", "#e23b4e"],
-          borderColor: "#121a2e",
+          borderColor: "#1f1f23",
           borderWidth: 2,
         },
       ],
@@ -104,8 +103,8 @@ export default function PanelEstadisticas({
         {
           label: "Mensajes por segundo",
           data: serieMps,
-          borderColor: "#9dc1ff",
-          backgroundColor: "rgba(157, 193, 255, 0.25)",
+          borderColor: "#b9a2e8",
+          backgroundColor: "rgba(100, 66, 164, 0.35)",
           fill: true,
           pointRadius: 0,
           tension: 0.25,
@@ -153,146 +152,205 @@ export default function PanelEstadisticas({
     stats.tiempo_deteccion_s == null ? "—" : `${Number(stats.tiempo_deteccion_s).toFixed(2)} s`;
 
   return (
-    <section className="flex h-[78dvh] min-h-0 flex-col overflow-hidden rounded-2xl border border-[#31415f] bg-[#121a2e] min-[1200px]:h-full">
-      <header className="shrink-0 border-b border-[#31415f] px-4 py-3">
-        <h2 className="text-lg font-semibold">Estadísticas</h2>
-        <p className="text-sm text-[#d5e0f5]">Comentarios, ritmo del muro y cuentas bloqueadas.</p>
-      </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        <dl className="grid grid-cols-2 gap-2">
-          <Dato titulo="Comentarios procesados" valor={stats.comentarios_procesados || 0} />
-          <Dato titulo="Mensajes por segundo" valor={stats.mensajes_por_segundo || 0} />
-          <Dato titulo="Cuentas bloqueadas" valor={stats.cuentas_bloqueadas || 0} />
-          <Dato titulo="Tasa de detección" valor={`${tasa} %`} />
-          <Dato titulo="Tiempo medio de análisis" valor={`${Number(stats.tiempo_analisis_ms || 0).toFixed(2)} ms`} />
-          <Dato titulo="Tiempo medio hasta marcar un bot" valor={deteccion} />
-        </dl>
-        <p className="mt-2 text-sm text-[#d5e0f5]">
-          {stats.bots_marcados || 0} de {stats.bots_evaluados || 0} cuentas del ataque llegaron a
-          bot. Mensajes descartados tras un bloqueo: {stats.mensajes_descartados || 0}. Activos:{" "}
-          {stats.usuarios_reales || 0} reales, {stats.usuarios_sospechosos || 0} sospechosos,{" "}
-          {stats.usuarios_bot || 0} bots.
-        </p>
-
-        <h3 className="mt-4 font-semibold">Usuarios reales frente a bots bloqueados</h3>
-        {hayGrafico ? (
-          <div className="mt-2 h-44">
-            <Doughnut
-              data={dona}
-              options={{
-                animation: false,
-                plugins: { legend: { position: "bottom", labels: { color: "#f4f7ff" } } },
-              }}
-            />
-          </div>
-        ) : (
-          <p className="mt-2 text-sm text-[#d5e0f5]">
-            Todavía no hay usuarios reales ni bots bloqueados para comparar.
+    <section className="px-5 py-5" aria-label={seccion === "reglas" ? "Reglas" : "Estadísticas"}>
+      {seccion === "graficos" && (
+        <>
+          <dl className="grid grid-cols-2 gap-2">
+            <Dato icono="muro" titulo="Procesados" valor={stats.comentarios_procesados || 0} />
+            <Dato icono="senal" titulo="Msg/s" valor={stats.mensajes_por_segundo || 0} />
+            <Dato icono="candado" titulo="Bloqueados" valor={stats.cuentas_bloqueadas || 0} />
+            <Dato icono="escudo" titulo="Detección" valor={`${tasa} %`} />
+            <Dato icono="reloj" titulo="Análisis" valor={`${Number(stats.tiempo_analisis_ms || 0).toFixed(2)} ms`} />
+            <Dato icono="bot" titulo="Hasta marcar" valor={deteccion} />
+          </dl>
+          <p className="mt-3 text-sm text-[#adadb8]">
+            {stats.bots_marcados || 0} de {stats.bots_evaluados || 0} cuentas del ataque llegaron a bot.
+            Activos: {stats.usuarios_reales || 0} reales, {stats.usuarios_sospechosos || 0} sospechosos,{" "}
+            {stats.usuarios_bot || 0} bots.
           </p>
-        )}
-        <p className="mt-2 text-sm text-[#d5e0f5]">
-          {reales} usuarios reales ({stats.porcentaje_reales || 0} %) y {bloqueadosBots} bots
-          bloqueados ({stats.porcentaje_bots_bloqueados || 0} %).
-        </p>
-
-        <h3 className="mt-4 font-semibold">Mensajes por segundo</h3>
-        {serieMps.length > 0 ? (
-          <div className="mt-2 h-36">
-            <Line data={lineaMps} options={opcionesLinea(undefined)} />
+          <div className="mt-5 grid gap-3">
+            <Grafico titulo="Reales y bots" icono="usuarios">
+              {hayGrafico ? (
+                <Doughnut
+                  data={dona}
+                  options={{
+                    animation: false,
+                    plugins: { legend: { position: "bottom", labels: { color: "#efeff1", boxWidth: 12 } } },
+                  }}
+                />
+              ) : (
+                <Vacio texto="Aún no hay cuentas para comparar." />
+              )}
+            </Grafico>
+            <Grafico titulo="Mensajes por segundo" icono="senal">
+              {serieMps.length > 0 ? (
+                <Line data={lineaMps} options={opcionesLinea(undefined)} />
+              ) : (
+                <Vacio texto="Esperando el primer segundo." />
+              )}
+            </Grafico>
+            <Grafico titulo="Riesgo del ataque" icono="rayo">
+              {serieRiesgo.length > 0 ? (
+                <Line data={lineaRiesgo} options={opcionesLinea(100)} />
+              ) : (
+                <Vacio texto="Aparece al llegar comentarios." />
+              )}
+            </Grafico>
           </div>
-        ) : (
-          <p className="mt-2 text-sm text-[#d5e0f5]">Esperando el primer segundo de medición.</p>
-        )}
+          <h3 className="mt-6 flex items-center gap-2 font-bold">
+            <Icono nombre="candado" className="size-5" />
+            Cuentas bloqueadas
+          </h3>
+          {(stats.bloqueados || []).length === 0 ? (
+            <p className="mt-2 text-sm text-[#adadb8]">Ninguna.</p>
+          ) : (
+            <ul className="mt-3 grid gap-2">
+              {stats.bloqueados.map((cuenta) => (
+                <li key={cuenta} className="flex items-center justify-between gap-2 rounded-md bg-[#1f1f23] px-3 py-2">
+                  <span className="truncate font-semibold">{cuenta}</span>
+                  <button
+                    type="button"
+                    onClick={() => onDesbloquear(cuenta)}
+                    className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[#bf94ff] px-3 font-semibold"
+                  >
+                    <Icono nombre="check" className="size-4" />
+                    Desbloquear
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
 
-        <h3 className="mt-4 font-semibold">Evolución del riesgo durante el ataque</h3>
-        {serieRiesgo.length > 0 ? (
-          <div className="mt-2 h-36">
-            <Line data={lineaRiesgo} options={opcionesLinea(100)} />
+      {seccion === "reglas" && (
+        <>
+          <div className="relative flex items-start gap-2 rounded-md bg-[#9147ff]/10 px-3 py-2.5 text-sm text-[#efeff1]">
+            <Ayuda
+              titulo="Cómo modificar las reglas"
+              texto="Cada comentario suma puntos de riesgo según las tres reglas: frecuencia, similitud y patrones. Cambia un valor, pulsa Aplicar y los comentarios nuevos se evaluarán con él. Reiniciar borra la simulación y vuelve a empezar."
+            />
+            <p>
+              Toca <span className="font-bold">?</span> para saber qué hace cada valor. Los cambios se aplican a los comentarios que lleguen
+              después de guardar.
+            </p>
           </div>
-        ) : (
-          <p className="mt-2 text-sm text-[#d5e0f5]">El riesgo medio aparece al llegar comentarios.</p>
-        )}
-        <p className="mt-1 text-sm text-[#d5e0f5]">
-          Último punto: {serieRiesgo.length ? serieRiesgo[serieRiesgo.length - 1] : 0} % de riesgo medio.
-        </p>
-
-        <h3 className="mt-4 font-semibold">Cuentas bloqueadas</h3>
-        {(stats.bloqueados || []).length === 0 ? (
-          <p className="mt-1 text-sm text-[#d5e0f5]">Ninguna cuenta bloqueada.</p>
-        ) : (
-          <ul className="mt-2 flex max-h-48 flex-col gap-2 overflow-y-auto">
-            {stats.bloqueados.map((cuenta) => (
-              <li key={cuenta} className="flex items-center justify-between gap-2 rounded-lg bg-[#0c1222] px-3 py-2">
-                <span>{cuenta}</span>
+          {formulario ? (
+            <form className="mt-4 flex flex-col gap-4" onSubmit={guardar}>
+              <div className="grid grid-cols-2 gap-2">
+                {CAMPOS.map(([clave, etiqueta, paso, , ayuda]) => (
+                  <div key={clave} className="relative flex flex-col gap-1.5 rounded-md bg-[#1f1f23] px-3 py-3">
+                    <span className="flex items-start justify-between gap-2">
+                      <label htmlFor={`regla-${clave}`} className="text-sm font-semibold">
+                        {etiqueta}
+                      </label>
+                      <Ayuda titulo={etiqueta} texto={ayuda} />
+                    </span>
+                    <input
+                      id={`regla-${clave}`}
+                      type="number"
+                      step={paso}
+                      value={formulario[clave] ?? ""}
+                      onChange={(evento) => cambiar(clave, evento.target.value)}
+                      className="min-h-11 rounded-md border-2 border-[#3a3a3d] bg-[#0e0e10] px-3 tabular outline-none focus:border-[#9147ff]"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  disabled={!conectado}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#9147ff] px-4 font-bold text-white hover:bg-[#772ce8] disabled:bg-[#3a3a3d]"
+                >
+                  <Icono nombre="check" className="size-4" />
+                  Aplicar
+                </button>
                 <button
                   type="button"
-                  onClick={() => onDesbloquear(cuenta)}
-                  className="min-h-11 rounded-lg border border-[#9dc1ff] px-3 font-semibold"
+                  onClick={() => {
+                    if (!confirmar) {
+                      setConfirmar(true);
+                      return;
+                    }
+                    setConfirmar(false);
+                    onReiniciar();
+                  }}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#ff8b98] px-4 font-bold"
                 >
-                  Desbloquear
+                  <Icono nombre="refrescar" className="size-4" />
+                  {confirmar ? "Confirmar reinicio" : "Reiniciar"}
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <details className="mt-4 rounded-xl border border-[#31415f] px-3 py-2">
-          <summary className="min-h-11 cursor-pointer py-2 font-semibold">Umbrales de las reglas</summary>
-          {formulario ? (
-            <form className="mt-2 flex flex-col gap-3" onSubmit={guardar}>
-              <p className="text-sm text-[#d5e0f5]">
-                La frecuencia suma puntos cuando llegan más mensajes que el máximo, dentro de la
-                ventana. La similitud y las mayúsculas suman cuando superan el valor. Se aplican a
-                los comentarios que lleguen después.
-              </p>
-              {CAMPOS.map(([clave, etiqueta, paso]) => (
-                <label key={clave} className="flex flex-col gap-1 text-sm">
-                  <span className="font-medium">{etiqueta}</span>
-                  <input
-                    type="number"
-                    step={paso}
-                    value={formulario[clave] ?? ""}
-                    onChange={(evento) => cambiar(clave, evento.target.value)}
-                    className="min-h-11 rounded-lg border border-[#31415f] bg-[#0c1222] px-3 tabular"
-                  />
-                </label>
-              ))}
-              <button
-                type="submit"
-                disabled={!conectado}
-                className="min-h-11 rounded-lg bg-[#1d4ed8] px-4 font-semibold text-white disabled:bg-[#243556]"
-              >
-                Aplicar umbrales
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!confirmar) {
-                    setConfirmar(true);
-                    return;
-                  }
-                  setConfirmar(false);
-                  onReiniciar();
-                }}
-                className="min-h-11 rounded-lg border border-[#ff8b98] px-4 font-semibold"
-              >
-                {confirmar ? "Confirmar reinicio" : "Reiniciar simulación"}
-              </button>
+              </div>
             </form>
           ) : (
-            <p className="py-2 text-sm text-[#d5e0f5]">Cargando umbrales…</p>
+            <p className="mt-4 text-sm text-[#adadb8]">Cargando reglas…</p>
           )}
-        </details>
-      </div>
+        </>
+      )}
     </section>
   );
 }
 
-function Dato({ titulo, valor }) {
+function Dato({ icono, titulo, valor }) {
   return (
-    <div className="rounded-xl bg-[#0c1222] px-3 py-2">
-      <dt className="text-sm text-[#d5e0f5]">{titulo}</dt>
-      <dd className="text-2xl font-semibold tabular">{valor}</dd>
+    <div className="flex items-center gap-3 rounded-md bg-[#1f1f23] px-3 py-2.5">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[#9147ff]/20 text-[#bf94ff]">
+        <Icono nombre={icono} className="size-4" />
+      </span>
+      <div>
+        <dt className="text-xs text-[#adadb8]">{titulo}</dt>
+        <dd className="text-xl font-bold tabular leading-tight">{valor}</dd>
+      </div>
     </div>
+  );
+}
+
+function Grafico({ titulo, icono, children }) {
+  return (
+    <section className="rounded-md bg-[#1f1f23] p-4">
+      <h3 className="mb-3 flex items-center gap-2 font-bold">
+        <Icono nombre={icono} className="size-4 text-[#bf94ff]" />
+        {titulo}
+      </h3>
+      <div className="h-48">{children}</div>
+    </section>
+  );
+}
+
+function Vacio({ texto }) {
+  return <p className="flex h-full items-center text-sm text-[#adadb8]">{texto}</p>;
+}
+
+function Ayuda({ titulo, texto }) {
+  const [abierta, setAbierta] = useState(false);
+  const id = useId();
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`Ayuda: ${titulo}`}
+        aria-expanded={abierta}
+        aria-controls={id}
+        onClick={() => setAbierta((valor) => !valor)}
+        onBlur={() => setAbierta(false)}
+        onKeyDown={(evento) => evento.key === "Escape" && abierta && (evento.stopPropagation(), setAbierta(false))}
+        className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold leading-none transition-colors ${
+          abierta ? "bg-[#9147ff] text-white" : "bg-[#3a3a3d] text-[#efeff1] hover:bg-[#9147ff]"
+        }`}
+      >
+        ?
+      </button>
+      {abierta && (
+        <div
+          id={id}
+          role="tooltip"
+          className="alerta-entrada absolute inset-x-2 top-full z-10 mt-1 rounded-md border border-[#3a3a3d] bg-[#0e0e10] p-3 text-xs font-normal leading-5 text-[#efeff1] shadow-2xl"
+        >
+          <p className="mb-1 font-bold text-[#bf94ff]">{titulo}</p>
+          {texto}
+        </div>
+      )}
+    </>
   );
 }
