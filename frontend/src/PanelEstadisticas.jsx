@@ -14,7 +14,7 @@ import { Doughnut, Line } from "react-chartjs-2";
 import { Icono } from "./iconos.jsx";
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler);
-ChartJS.defaults.color = "#d2ccdf";
+ChartJS.defaults.color = "#adadb8";
 ChartJS.defaults.font.family = '"Open Sans", "Segoe UI", sans-serif';
 ChartJS.defaults.font.size = 13;
 
@@ -34,7 +34,7 @@ const CAMPOS = [
 function opcionesLinea(maximo) {
   const vertical = {
     beginAtZero: true,
-    ticks: { color: "#d2ccdf" },
+    ticks: { color: "#adadb8" },
     grid: { color: "rgba(210, 204, 223, 0.12)" },
   };
   if (typeof maximo === "number") vertical.max = maximo;
@@ -45,7 +45,7 @@ function opcionesLinea(maximo) {
     plugins: { legend: { display: false } },
     scales: {
       x: {
-        ticks: { maxTicksLimit: 6, color: "#d2ccdf" },
+        ticks: { maxTicksLimit: 6, color: "#adadb8" },
         grid: { color: "rgba(210, 204, 223, 0.12)" },
       },
       y: vertical,
@@ -88,7 +88,7 @@ export default function PanelEstadisticas({
         {
           data: [reales, bloqueadosBots],
           backgroundColor: ["#1f9d57", "#e23b4e"],
-          borderColor: "#141318",
+          borderColor: "#1f1f23",
           borderWidth: 2,
         },
       ],
@@ -152,14 +152,10 @@ export default function PanelEstadisticas({
     stats.tiempo_deteccion_s == null ? "—" : `${Number(stats.tiempo_deteccion_s).toFixed(2)} s`;
 
   return (
-    <section className="min-h-0 flex-1 overflow-y-auto scroll bg-[#141318] px-5 py-5" aria-label={seccion === "reglas" ? "Reglas" : "Estadísticas"}>
+    <section className="px-5 py-5" aria-label={seccion === "reglas" ? "Reglas" : "Estadísticas"}>
       {seccion === "graficos" && (
         <>
-          <h2 className="flex items-center gap-2 text-xl font-bold">
-            <Icono nombre="grafica" className="size-6 text-[#c4b0ef]" />
-            Estadísticas
-          </h2>
-          <dl className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-2">
             <Dato icono="muro" titulo="Procesados" valor={stats.comentarios_procesados || 0} />
             <Dato icono="senal" titulo="Msg/s" valor={stats.mensajes_por_segundo || 0} />
             <Dato icono="candado" titulo="Bloqueados" valor={stats.cuentas_bloqueadas || 0} />
@@ -167,19 +163,19 @@ export default function PanelEstadisticas({
             <Dato icono="reloj" titulo="Análisis" valor={`${Number(stats.tiempo_analisis_ms || 0).toFixed(2)} ms`} />
             <Dato icono="bot" titulo="Hasta marcar" valor={deteccion} />
           </dl>
-          <p className="mt-3 text-sm text-[#d2ccdf]">
+          <p className="mt-3 text-sm text-[#adadb8]">
             {stats.bots_marcados || 0} de {stats.bots_evaluados || 0} cuentas del ataque llegaron a bot.
             Activos: {stats.usuarios_reales || 0} reales, {stats.usuarios_sospechosos || 0} sospechosos,{" "}
             {stats.usuarios_bot || 0} bots.
           </p>
-          <div className="mt-5 grid gap-4 xl:grid-cols-3">
+          <div className="mt-5 grid gap-3">
             <Grafico titulo="Reales y bots" icono="usuarios">
               {hayGrafico ? (
                 <Doughnut
                   data={dona}
                   options={{
                     animation: false,
-                    plugins: { legend: { position: "bottom", labels: { color: "#f7f5fb", boxWidth: 12 } } },
+                    plugins: { legend: { position: "bottom", labels: { color: "#efeff1", boxWidth: 12 } } },
                   }}
                 />
               ) : (
@@ -206,16 +202,16 @@ export default function PanelEstadisticas({
             Cuentas bloqueadas
           </h3>
           {(stats.bloqueados || []).length === 0 ? (
-            <p className="mt-2 text-sm text-[#d2ccdf]">Ninguna.</p>
+            <p className="mt-2 text-sm text-[#adadb8]">Ninguna.</p>
           ) : (
-            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            <ul className="mt-3 grid gap-2">
               {stats.bloqueados.map((cuenta) => (
-                <li key={cuenta} className="flex items-center justify-between gap-2 rounded-xl bg-[#26222c] px-3 py-2">
+                <li key={cuenta} className="flex items-center justify-between gap-2 rounded-md bg-[#1f1f23] px-3 py-2">
                   <span className="truncate font-semibold">{cuenta}</span>
                   <button
                     type="button"
                     onClick={() => onDesbloquear(cuenta)}
-                    className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[#c4b0ef] px-3 font-semibold"
+                    className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[#bf94ff] px-3 font-semibold"
                   >
                     <Icono nombre="check" className="size-4" />
                     Desbloquear
@@ -229,25 +225,21 @@ export default function PanelEstadisticas({
 
       {seccion === "reglas" && (
         <>
-          <h2 className="flex items-center gap-2 text-xl font-bold">
-            <Icono nombre="reglas" className="size-6 text-[#c4b0ef]" />
-            Reglas
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm text-[#d2ccdf]">
+          <p className="text-sm text-[#adadb8]">
             Se aplican a los comentarios que lleguen después de guardar.
           </p>
           {formulario ? (
-            <form className="mt-4 flex max-w-4xl flex-col gap-4" onSubmit={guardar}>
-              <div className="grid gap-3 sm:grid-cols-2">
+            <form className="mt-4 flex flex-col gap-4" onSubmit={guardar}>
+              <div className="grid grid-cols-2 gap-2">
                 {CAMPOS.map(([clave, etiqueta, paso]) => (
-                  <label key={clave} className="flex flex-col gap-1.5 rounded-xl bg-[#26222c] px-3 py-3">
+                  <label key={clave} className="flex flex-col gap-1.5 rounded-md bg-[#1f1f23] px-3 py-3">
                     <span className="text-sm font-semibold">{etiqueta}</span>
                     <input
                       type="number"
                       step={paso}
                       value={formulario[clave] ?? ""}
                       onChange={(evento) => cambiar(clave, evento.target.value)}
-                      className="min-h-11 rounded-lg border border-[#4a4458] bg-[#1e1d24] px-3 tabular"
+                      className="min-h-11 rounded-md border-2 border-[#3a3a3d] bg-[#0e0e10] px-3 tabular outline-none focus:border-[#9147ff]"
                     />
                   </label>
                 ))}
@@ -256,7 +248,7 @@ export default function PanelEstadisticas({
                 <button
                   type="submit"
                   disabled={!conectado}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#6442a4] px-4 font-bold text-white disabled:bg-[#4a4458]"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#9147ff] px-4 font-bold text-white hover:bg-[#772ce8] disabled:bg-[#3a3a3d]"
                 >
                   <Icono nombre="check" className="size-4" />
                   Aplicar
@@ -279,7 +271,7 @@ export default function PanelEstadisticas({
               </div>
             </form>
           ) : (
-            <p className="mt-4 text-sm text-[#d2ccdf]">Cargando reglas…</p>
+            <p className="mt-4 text-sm text-[#adadb8]">Cargando reglas…</p>
           )}
         </>
       )}
@@ -289,13 +281,13 @@ export default function PanelEstadisticas({
 
 function Dato({ icono, titulo, valor }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-[#26222c] px-4 py-3">
-      <span className="flex size-11 items-center justify-center rounded-xl bg-[#6442a4]/40">
-        <Icono nombre={icono} className="size-5" />
+    <div className="flex items-center gap-3 rounded-md bg-[#1f1f23] px-3 py-2.5">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[#9147ff]/20 text-[#bf94ff]">
+        <Icono nombre={icono} className="size-4" />
       </span>
       <div>
-        <dt className="text-sm text-[#d2ccdf]">{titulo}</dt>
-        <dd className="text-2xl font-bold tabular leading-tight">{valor}</dd>
+        <dt className="text-xs text-[#adadb8]">{titulo}</dt>
+        <dd className="text-xl font-bold tabular leading-tight">{valor}</dd>
       </div>
     </div>
   );
@@ -303,16 +295,16 @@ function Dato({ icono, titulo, valor }) {
 
 function Grafico({ titulo, icono, children }) {
   return (
-    <section className="rounded-2xl bg-[#26222c] p-4">
+    <section className="rounded-md bg-[#1f1f23] p-4">
       <h3 className="mb-3 flex items-center gap-2 font-bold">
-        <Icono nombre={icono} className="size-4 text-[#c4b0ef]" />
+        <Icono nombre={icono} className="size-4 text-[#bf94ff]" />
         {titulo}
       </h3>
-      <div className="h-56">{children}</div>
+      <div className="h-48">{children}</div>
     </section>
   );
 }
 
 function Vacio({ texto }) {
-  return <p className="flex h-full items-center text-sm text-[#d2ccdf]">{texto}</p>;
+  return <p className="flex h-full items-center text-sm text-[#adadb8]">{texto}</p>;
 }

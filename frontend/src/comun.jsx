@@ -14,7 +14,7 @@ export function Avatar({ nombre, tam = "md" }) {
   const letra = (nombre || "?").trim().slice(0, 1).toUpperCase() || "?";
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center rounded-full font-bold text-[#241433] ${medida}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full font-bold text-[#18181b] ${medida}`}
       style={{ backgroundColor: colorNombre(nombre) }}
       aria-hidden="true"
     >
@@ -41,9 +41,9 @@ export function ChipRazon({ razon, detalle }) {
   return (
     <span
       title={detalle || razon}
-      className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-black/35 px-2.5 text-sm font-semibold"
+      className="inline-flex h-6 items-center gap-1 rounded-full bg-[#2f2f35] px-2 text-xs font-semibold text-[#efeff1]"
     >
-      <Icono nombre={icono} className="size-4" />
+      <Icono nombre={icono} className="size-3.5" />
       {corto}
       <span className="sr-only">. {detalle || razon}</span>
     </span>

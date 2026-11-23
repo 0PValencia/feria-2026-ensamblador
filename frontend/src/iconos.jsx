@@ -113,29 +113,46 @@ const TRAZOS = {
     </>
   ),
   cerrar: <path d="m7 7 10 10M17 7 7 17" />,
+  engranaje: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.3.9a7.4 7.4 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.5a7.4 7.4 0 0 0-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.3-.9a7.4 7.4 0 0 0 2.6 1.5l.5 2.5h4l.5-2.5a7.4 7.4 0 0 0 2.6-1.5l2.3.9 2-3.4-2-1.5z" />
+    </>
+  ),
+  play: <path d="M8 5.5v13l10.5-6.5L8 5.5z" fill="currentColor" />,
+  pausa: <path d="M8 5.5v13M16 5.5v13" strokeWidth="3" />,
+  volumen: <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />,
+  pantalla: <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />,
+  ojo: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </>
+  ),
+  colapsar: <path d="M15 6l-6 6 6 6M5 5v14" />,
+  expandir: <path d="M9 6l6 6-6 6M19 5v14" />,
+  flechaAbajo: <path d="M12 5v14M6 13l6 6 6-6" />,
 };
 
-export function Marca({ clara = false }) {
+export function Marca({ compacta = false }) {
   return (
-    <span className="flex items-center gap-2.5">
+    <span className="flex items-center gap-2">
       <svg viewBox="0 0 32 32" className="size-8 shrink-0" aria-hidden="true">
-        <rect width="32" height="32" rx="9" fill={clara ? "#6442a4" : "#ffffff"} />
-        <path
-          fill={clara ? "#ffffff" : "#6442a4"}
-          d="M8 10.2h10.8c1.2 0 2.2 1 2.2 2.2v5.6c0 1.2-1 2.2-2.2 2.2H14l-3.4 2.8v-2.8H8c-1.2 0-2.2-1-2.2-2.2v-5.6c0-1.2 1-2.2 2.2-2.2z"
-        />
+        <path fill="#9147ff" d="M6 3h22v15.5L21.5 25H16l-4 4h-3v-4H4V8z" />
         <path
           fill="none"
-          stroke={clara ? "#6442a4" : "#ffffff"}
-          strokeWidth="1.8"
+          stroke="#fff"
+          strokeWidth="2.2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          d="m10.2 15.1 2.2 2.2 4.6-4.6"
+          d="m11 14.5 3 3 6-6"
         />
       </svg>
-      <span className={`text-xl font-bold leading-none tracking-tight ${clara ? "text-[#1e1d24]" : "text-white"}`}>
-        SocialBot
-      </span>
+      {!compacta && (
+        <span className="text-lg font-extrabold leading-none tracking-tight text-[#efeff1]">
+          SocialBot<span className="text-[#bf94ff]">Guard</span>
+        </span>
+      )}
     </span>
   );
 }
