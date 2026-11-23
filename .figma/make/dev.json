@@ -1,0 +1,13 @@
+{
+  "installOn": [
+    "backend/requirements.txt",
+    "frontend/package.json",
+    "frontend/package-lock.json"
+  ],
+  "restartOn": [
+    "backend/app/**",
+    "frontend/index.html",
+    "frontend/src/**",
+    "frontend/vite.config.js"
+  ]
+}

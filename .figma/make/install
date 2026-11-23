@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+if [[ ! -x .venv/bin/python ]]; then
+  rm -rf .venv
+  python3 -m venv --without-pip .venv
+fi
+
+if ! .venv/bin/python -m pip --version >/dev/null 2>&1; then
+  get_pip="$(mktemp)"
+  trap 'rm -f "$get_pip"' EXIT
+  curl --fail --location --silent --show-error \
+    https://bootstrap.pypa.io/get-pip.py \
+    --output "$get_pip"
+  .venv/bin/python "$get_pip"
+fi
+
+.venv/bin/python -m pip install -r backend/requirements.txt
+(cd frontend && npm ci)
