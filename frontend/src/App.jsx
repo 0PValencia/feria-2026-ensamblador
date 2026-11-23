@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "./comun.jsx";
-import { Icono, Marca } from "./iconos.jsx";
+import { Icono, LogoIcono, Marca } from "./iconos.jsx";
 import PanelChat from "./PanelChat.jsx";
 import PanelEstadisticas from "./PanelEstadisticas.jsx";
 import PanelMuro, { alertasActivas } from "./PanelMuro.jsx";
@@ -187,7 +187,7 @@ export default function App() {
       </p>
 
       <header className="relative z-30 flex h-[50px] shrink-0 items-center gap-2 bg-[#18181b] px-2 shadow-[0_1px_2px_rgba(0,0,0,.9)] sm:px-3">
-        <a href="/" className="flex items-center rounded p-1 hover:bg-[#2f2f35]" aria-label="SocialBotGuard, inicio">
+        <a href="/" className="flex items-center rounded p-1 hover:bg-[#2f2f35]" aria-label="Bot, simulador de bots. Inicio">
           <span className="sm:hidden">
             <Marca compacta />
           </span>
@@ -338,8 +338,8 @@ export default function App() {
             <div className="relative shrink-0 self-start">
               <span className={`block rounded-full p-[3px] ${conectado ? "bg-[#eb0400]" : "bg-[#53535f]"}`}>
                 <span className="block rounded-full border-[3px] border-[#0e0e10]">
-                  <span className="flex size-14 items-center justify-center rounded-full bg-[#9147ff]">
-                    <Icono nombre="escudo" className="size-7 text-white" />
+                  <span className="flex size-14 items-center justify-center overflow-hidden rounded-full bg-[#18181b]">
+                    <LogoIcono className="size-11" />
                   </span>
                 </span>
               </span>

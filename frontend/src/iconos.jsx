@@ -1,3 +1,6 @@
+import logo from "./assets/logo.svg";
+import logoIcono from "./assets/logo-icono.svg";
+
 export function Icono({ nombre, className = "size-5" }) {
   return (
     <svg
@@ -135,24 +138,13 @@ const TRAZOS = {
 };
 
 export function Marca({ compacta = false }) {
-  return (
-    <span className="flex items-center gap-2">
-      <svg viewBox="0 0 32 32" className="size-8 shrink-0" aria-hidden="true">
-        <path fill="#9147ff" d="M6 3h22v15.5L21.5 25H16l-4 4h-3v-4H4V8z" />
-        <path
-          fill="none"
-          stroke="#fff"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="m11 14.5 3 3 6-6"
-        />
-      </svg>
-      {!compacta && (
-        <span className="text-lg font-extrabold leading-none tracking-tight text-[#efeff1]">
-          SocialBot<span className="text-[#bf94ff]">Guard</span>
-        </span>
-      )}
-    </span>
+  return compacta ? (
+    <img src={logoIcono} alt="Bot, simulador de bots" className="h-8 w-auto" />
+  ) : (
+    <img src={logo} alt="Bot, simulador de bots" className="h-9 w-auto" />
   );
+}
+
+export function LogoIcono({ className = "size-8" }) {
+  return <img src={logoIcono} alt="" className={`object-contain ${className}`} />;
 }

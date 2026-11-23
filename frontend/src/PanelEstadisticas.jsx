@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
   ArcElement,
   CategoryScale,
@@ -19,16 +19,16 @@ ChartJS.defaults.font.family = '"Open Sans", "Segoe UI", sans-serif';
 ChartJS.defaults.font.size = 13;
 
 const CAMPOS = [
-  ["ventana_segundos", "Ventana (s)", "0.5", false],
-  ["mensajes_maximos", "Mensajes en la ventana", "1", true],
-  ["similitud_umbral", "Similitud (0 a 1)", "0.05", false],
-  ["puntos_frecuencia", "Puntos de frecuencia", "1", true],
-  ["puntos_similitud", "Puntos de similitud", "1", true],
-  ["puntos_patrones", "Puntos de patrones", "1", true],
-  ["mayusculas_umbral", "Mayúsculas (0 a 1)", "0.05", false],
-  ["umbral_sospechoso", "Sospechoso desde %", "1", true],
-  ["umbral_bot", "Bot desde %", "1", true],
-  ["ventana_observacion", "Observación (s)", "1", false],
+  ["ventana_segundos", "Ventana (s)", "0.5", false, "Tiempo durante el que se cuentan los mensajes seguidos de una misma cuenta. Una ventana más larga atrapa ráfagas más lentas, pero también puede marcar a usuarios muy activos."],
+  ["mensajes_maximos", "Mensajes en la ventana", "1", true, "Cuántos mensajes puede enviar una cuenta dentro de la ventana sin sumar riesgo. Si lo bajas, los bots se detectan antes; si lo subes, hay menos falsos positivos."],
+  ["similitud_umbral", "Similitud (0 a 1)", "0.05", false, "Qué tan parecido debe ser un mensaje a otro anterior de la misma cuenta para contarlo como repetido. 0 es totalmente distinto y 1 es idéntico; 0,8 detecta copias con pequeñas variaciones."],
+  ["puntos_frecuencia", "Puntos de frecuencia", "1", true, "Riesgo (en %) que se suma cuando la cuenta supera los mensajes permitidos en la ventana."],
+  ["puntos_similitud", "Puntos de similitud", "1", true, "Riesgo (en %) que se suma cuando el mensaje es casi idéntico a uno anterior de la misma cuenta."],
+  ["puntos_patrones", "Puntos de patrones", "1", true, "Riesgo (en %) que se suma si el mensaje tiene dos o más enlaces o demasiadas mayúsculas."],
+  ["mayusculas_umbral", "Mayúsculas (0 a 1)", "0.05", false, "Proporción de letras en mayúscula desde la que el mensaje cuenta como sospechoso (0,7 = 70 %). Solo se revisan mensajes con al menos 10 letras."],
+  ["umbral_sospechoso", "Sospechoso desde %", "1", true, "Riesgo mínimo para marcar la cuenta como sospechosa (ámbar). Por debajo, la cuenta se considera real."],
+  ["umbral_bot", "Bot desde %", "1", true, "Riesgo mínimo para marcar la cuenta como bot (rojo), mostrar la alerta y sugerir el bloqueo. Debe ser mayor que el umbral de sospechoso."],
+  ["ventana_observacion", "Observación (s)", "1", false, "Segundos que la cuenta conserva su riesgo más alto tras un mensaje sospechoso. Evita que un bot lento parezca limpio entre mensaje y mensaje."],
 ];
 
 function opcionesLinea(maximo) {
@@ -225,23 +225,36 @@ export default function PanelEstadisticas({
 
       {seccion === "reglas" && (
         <>
-          <p className="text-sm text-[#adadb8]">
-            Se aplican a los comentarios que lleguen después de guardar.
-          </p>
+          <div className="relative flex items-start gap-2 rounded-md bg-[#9147ff]/10 px-3 py-2.5 text-sm text-[#efeff1]">
+            <Ayuda
+              titulo="Cómo modificar las reglas"
+              texto="Cada comentario suma puntos de riesgo según las tres reglas: frecuencia, similitud y patrones. Cambia un valor, pulsa Aplicar y los comentarios nuevos se evaluarán con él. Reiniciar borra la simulación y vuelve a empezar."
+            />
+            <p>
+              Toca <span className="font-bold">?</span> para saber qué hace cada valor. Los cambios se aplican a los comentarios que lleguen
+              después de guardar.
+            </p>
+          </div>
           {formulario ? (
             <form className="mt-4 flex flex-col gap-4" onSubmit={guardar}>
               <div className="grid grid-cols-2 gap-2">
-                {CAMPOS.map(([clave, etiqueta, paso]) => (
-                  <label key={clave} className="flex flex-col gap-1.5 rounded-md bg-[#1f1f23] px-3 py-3">
-                    <span className="text-sm font-semibold">{etiqueta}</span>
+                {CAMPOS.map(([clave, etiqueta, paso, , ayuda]) => (
+                  <div key={clave} className="relative flex flex-col gap-1.5 rounded-md bg-[#1f1f23] px-3 py-3">
+                    <span className="flex items-start justify-between gap-2">
+                      <label htmlFor={`regla-${clave}`} className="text-sm font-semibold">
+                        {etiqueta}
+                      </label>
+                      <Ayuda titulo={etiqueta} texto={ayuda} />
+                    </span>
                     <input
+                      id={`regla-${clave}`}
                       type="number"
                       step={paso}
                       value={formulario[clave] ?? ""}
                       onChange={(evento) => cambiar(clave, evento.target.value)}
                       className="min-h-11 rounded-md border-2 border-[#3a3a3d] bg-[#0e0e10] px-3 tabular outline-none focus:border-[#9147ff]"
                     />
-                  </label>
+                  </div>
                 ))}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -307,4 +320,37 @@ function Grafico({ titulo, icono, children }) {
 
 function Vacio({ texto }) {
   return <p className="flex h-full items-center text-sm text-[#adadb8]">{texto}</p>;
+}
+
+function Ayuda({ titulo, texto }) {
+  const [abierta, setAbierta] = useState(false);
+  const id = useId();
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`Ayuda: ${titulo}`}
+        aria-expanded={abierta}
+        aria-controls={id}
+        onClick={() => setAbierta((valor) => !valor)}
+        onBlur={() => setAbierta(false)}
+        onKeyDown={(evento) => evento.key === "Escape" && abierta && (evento.stopPropagation(), setAbierta(false))}
+        className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold leading-none transition-colors ${
+          abierta ? "bg-[#9147ff] text-white" : "bg-[#3a3a3d] text-[#efeff1] hover:bg-[#9147ff]"
+        }`}
+      >
+        ?
+      </button>
+      {abierta && (
+        <div
+          id={id}
+          role="tooltip"
+          className="alerta-entrada absolute inset-x-2 top-full z-10 mt-1 rounded-md border border-[#3a3a3d] bg-[#0e0e10] p-3 text-xs font-normal leading-5 text-[#efeff1] shadow-2xl"
+        >
+          <p className="mb-1 font-bold text-[#bf94ff]">{titulo}</p>
+          {texto}
+        </div>
+      )}
+    </>
+  );
 }
