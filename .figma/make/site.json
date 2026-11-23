@@ -1,0 +1,10 @@
+{
+  "description": "I can’t determine the app’s purpose or audience from these setup instructions, which describe project verification and deployment rather than its functionality.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
