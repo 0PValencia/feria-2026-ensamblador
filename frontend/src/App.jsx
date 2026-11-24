@@ -32,6 +32,7 @@ export default function App() {
   const [reglas, setReglas] = useState(false);
   const [umbrales, setUmbrales] = useState(obtenerUmbrales);
   const [lateral, setLateral] = useState(true);
+  const [ranura, setRanura] = useState(null);
   const [aviso, setAviso] = useState(() => MODO_EJEMPLO && localStorage.getItem("sbg-aviso-ejemplo") !== "visto");
 
   const recargar = useCallback(() => {
@@ -162,6 +163,7 @@ export default function App() {
         </form>
 
         <div className="flex items-center gap-1.5">
+          <span ref={setRanura} className="contents" />
           <span className="group relative">
             <button
               type="button"
@@ -191,6 +193,7 @@ export default function App() {
       </header>
 
       <div className="relative flex min-h-0 flex-1 overflow-clip">
+        {ruta.vista === "explorar" && (
         <aside
           className={`hidden shrink-0 flex-col bg-[#1f1f23] transition-[width] lg:flex ${lateral ? "w-60" : "w-[50px]"}`}
           aria-label="Videos analizados"
@@ -247,6 +250,7 @@ export default function App() {
             )}
           </ul>
         </aside>
+        )}
 
         <main className="scroll min-w-0 flex-1 overflow-y-auto">
           {ruta.vista === "video" ? (
@@ -254,6 +258,9 @@ export default function App() {
               key={ruta.id}
               id={ruta.id}
               version={version}
+              ranuraNav={ranura}
+              lateral={lateral}
+              setLateral={setLateral}
               onReanalizar={(url) => abrirAnalisis(url)}
               onEliminado={() => {
                 recargar();

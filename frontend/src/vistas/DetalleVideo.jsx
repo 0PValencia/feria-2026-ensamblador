@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArcElement,
   CategoryScale,
@@ -28,11 +29,12 @@ const INSIGNIA = {
   sospechoso: { clase: "bg-[#ffb31a] text-[#18181b]", icono: "alerta", texto: "Sospechoso" },
 };
 
-export default function DetalleVideo({ id, version, onReanalizar, onEliminado }) {
+export default function DetalleVideo({ id, version, ranuraNav, lateral, setLateral, onReanalizar, onEliminado }) {
   const [video, setVideo] = useState(undefined);
   const [indice, setIndice] = useState(null);
   const [base, setBase] = useState(null);
   const [autor, setAutor] = useState(null);
+  const [historial, setHistorial] = useState(false);
 
   useEffect(() => {
     let vigente = true;
@@ -80,10 +82,41 @@ export default function DetalleVideo({ id, version, onReanalizar, onEliminado })
 
   const nivelClave = nivelRiesgo(actual.resumen.porcentaje_bots);
   const nivel = NIVELES[nivelClave];
-  const opcionesBase = video.analisis.map((a, i) => ({ a, i })).filter(({ i }) => i !== indice);
+
+  function verAnalisis(i) {
+    setIndice(i);
+    if (base === i) setBase(i > 0 ? i - 1 : null);
+    else if (base == null && i > 0) setBase(i - 1);
+  }
 
   return (
-    <div className="flex flex-col xl:h-full xl:flex-row">
+    <div className="flex lg:h-full">
+      {ranuraNav &&
+        createPortal(
+          <MenuHistorial
+            analisis={video.analisis}
+            indice={indice}
+            base={base}
+            abierto={historial}
+            setAbierto={setHistorial}
+            onVer={verAnalisis}
+            onBase={setBase}
+            onNuevo={() => {
+              setHistorial(false);
+              onReanalizar(video.url);
+            }}
+          />,
+          ranuraNav,
+        )}
+      <LateralCuentas
+        cuentas={actual.cuentas}
+        nuevas={cambios ? new Set(cambios.nuevas.map((c) => c.autor)) : null}
+        autor={autor}
+        onElegir={(nombre) => setAutor((a) => (a === nombre ? null : nombre))}
+        abierto={lateral}
+        setAbierto={setLateral}
+      />
+      <div className="flex min-w-0 flex-1 flex-col lg:overflow-y-auto xl:flex-row xl:overflow-hidden">
       <div className="scroll min-w-0 flex-1 xl:overflow-y-auto">
         <div className="aspect-video max-h-[calc(100dvh-50px-120px)] w-full bg-black">
           <iframe
@@ -147,85 +180,19 @@ export default function DetalleVideo({ id, version, onReanalizar, onEliminado })
         </section>
 
         <div className="space-y-8 border-t border-[#2f2f35] px-4 py-5 sm:px-6">
-          <section aria-labelledby="titulo-historial">
-            <div className="mb-3 flex flex-wrap items-center gap-3">
-              <h2 id="titulo-historial" className="flex items-center gap-2 text-base font-bold">
-                <Icono nombre="historial" className="size-5 text-[#bf94ff]" />
-                Historial de análisis
-              </h2>
-              {video.analisis.length > 1 && (
-                <label className="ml-auto flex items-center gap-2 text-sm">
-                  <Icono nombre="comparar" className="size-4 text-[#adadb8]" />
-                  <span className="text-[#adadb8]">Comparar con</span>
-                  <select
-                    value={base ?? ""}
-                    onChange={(evento) => setBase(evento.target.value === "" ? null : Number(evento.target.value))}
-                    className="h-8 rounded-md border-2 border-[#3a3a3d] bg-[#18181b] px-2 text-sm font-semibold outline-none focus:border-[#9147ff]"
-                  >
-                    <option value="">Sin comparar</option>
-                    {opcionesBase.map(({ a, i }) => (
-                      <option key={a.id} value={i}>
-                        Análisis {i + 1} · {fechaCorta(a.fecha)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </div>
-            <ol className="scroll flex gap-2 overflow-x-auto pb-1">
-              {video.analisis.map((a, i) => {
-                const seleccionado = i === indice;
-                const esBase = i === base && base !== indice;
-                const nv = NIVELES[nivelRiesgo(a.resumen.porcentaje_bots)];
-                return (
-                  <li key={a.id} className="shrink-0">
-                    <button
-                      type="button"
-                      aria-pressed={seleccionado}
-                      onClick={() => {
-                        setIndice(i);
-                        if (base === i) setBase(i > 0 ? i - 1 : null);
-                        else if (base == null && i > 0) setBase(i - 1);
-                      }}
-                      className={`w-44 rounded-md border-2 p-3 text-left transition-colors ${
-                        seleccionado ? "border-[#9147ff] bg-[#9147ff]/10" : esBase ? "border-dashed border-[#53535f] bg-[#18181b]" : "border-transparent bg-[#1f1f23] hover:bg-[#26262c]"
-                      }`}
-                    >
-                      <span className="flex items-center justify-between text-xs font-bold">
-                        Análisis {i + 1}
-                        {seleccionado ? (
-                          <span className="rounded bg-[#9147ff] px-1.5 text-[10px] uppercase text-white">Viendo</span>
-                        ) : esBase ? (
-                          <span className="rounded bg-[#3a3a3d] px-1.5 text-[10px] uppercase">Base</span>
-                        ) : null}
-                      </span>
-                      <span className="mt-0.5 block text-xs text-[#adadb8]">{fechaCompleta(a.fecha)}</span>
-                      <span className="mt-2 flex items-end justify-between">
-                        <span className={`text-xl font-extrabold tabular ${nv.texto}`}>{a.resumen.porcentaje_bots}%</span>
-                        <span className="text-xs text-[#adadb8] tabular">{a.resumen.comentarios} com.</span>
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => onReanalizar(video.url)}
-                  className="flex h-full min-h-[92px] w-36 flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-[#3a3a3d] text-sm font-semibold text-[#adadb8] hover:border-[#9147ff] hover:text-[#bf94ff]"
-                >
-                  <Icono nombre="mas" className="size-5" />
-                  Nuevo análisis
-                </button>
-              </li>
-            </ol>
-          </section>
-
           <section aria-labelledby="titulo-resumen">
             <h2 id="titulo-resumen" className="mb-3 flex items-center gap-2 text-base font-bold">
               <Icono nombre="grafica" className="size-5 text-[#bf94ff]" />
               Resumen del análisis {indice + 1}
               {anterior && <span className="text-sm font-normal text-[#adadb8]">vs análisis {base + 1}</span>}
+              <button
+                type="button"
+                onClick={() => setHistorial(true)}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[#2f2f35] px-3 py-1 text-xs font-semibold hover:bg-[#3a3a3d]"
+              >
+                <Icono nombre="historial" className="size-3.5" />
+                {indice + 1} de {video.analisis.length} · cambiar
+              </button>
             </h2>
             <dl className="grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6">
               <Kpi titulo="Comentarios" valor={actual.resumen.comentarios} previo={anterior?.resumen.comentarios} sufijo="" neutral />
@@ -313,6 +280,7 @@ export default function DetalleVideo({ id, version, onReanalizar, onEliminado })
           onQuitarAutor={() => setAutor(null)}
         />
       </aside>
+      </div>
     </div>
   );
 }
@@ -614,5 +582,199 @@ function BotonEliminar({ onConfirmar }) {
     >
       <Icono nombre="basura" className="size-4" />
     </button>
+  );
+}
+
+function MenuHistorial({ analisis, indice, base, abierto, setAbierto, onVer, onBase, onNuevo }) {
+  const caja = useRef(null);
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const fuera = (evento) => caja.current && !caja.current.contains(evento.target) && setAbierto(false);
+    const tecla = (evento) => evento.key === "Escape" && setAbierto(false);
+    document.addEventListener("mousedown", fuera);
+    window.addEventListener("keydown", tecla);
+    return () => {
+      document.removeEventListener("mousedown", fuera);
+      window.removeEventListener("keydown", tecla);
+    };
+  }, [abierto, setAbierto]);
+
+  return (
+    <span ref={caja} className="group relative">
+      <button
+        type="button"
+        aria-label={`Historial de análisis (${analisis.length})`}
+        aria-expanded={abierto}
+        aria-haspopup="dialog"
+        onClick={() => setAbierto((valor) => !valor)}
+        className={`relative flex size-9 items-center justify-center rounded-md ${abierto ? "bg-[#9147ff]/25 text-[#bf94ff]" : "hover:bg-[#2f2f35]"}`}
+      >
+        <Icono nombre="historial" />
+        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#9147ff] px-1 text-[11px] font-bold text-white tabular">
+          {analisis.length}
+        </span>
+      </button>
+      {!abierto && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute right-1/2 top-full z-40 mt-2 translate-x-1/2 whitespace-nowrap rounded bg-[#efeff1] px-2 py-1 text-xs font-bold text-[#0e0e10] opacity-0 transition-opacity delay-150 group-hover:opacity-100"
+        >
+          Historial de análisis
+        </span>
+      )}
+      {abierto && (
+        <div
+          role="dialog"
+          aria-label="Historial de análisis"
+          className="alerta-entrada absolute right-0 top-full z-40 mt-2 w-[min(360px,calc(100vw-1rem))] rounded-md border border-[#2f2f35] bg-[#18181b] shadow-[0_12px_40px_rgba(0,0,0,.8)]"
+        >
+          <div className="flex items-center gap-2 border-b border-[#2f2f35] px-4 py-3">
+            <Icono nombre="historial" className="size-4 text-[#bf94ff]" />
+            <p className="text-sm font-bold">Historial de análisis</p>
+            <span className="ml-auto text-xs text-[#adadb8]">{analisis.length} guardados</span>
+          </div>
+          {analisis.length > 1 && (
+            <label className="flex items-center gap-2 border-b border-[#2f2f35] px-4 py-2.5 text-sm">
+              <Icono nombre="comparar" className="size-4 text-[#adadb8]" />
+              <span className="text-[#adadb8]">Comparar con</span>
+              <select
+                value={base ?? ""}
+                onChange={(evento) => onBase(evento.target.value === "" ? null : Number(evento.target.value))}
+                className="ml-auto h-8 rounded-md border-2 border-[#3a3a3d] bg-[#0e0e10] px-2 text-sm font-semibold outline-none focus:border-[#9147ff]"
+              >
+                <option value="">Sin comparar</option>
+                {analisis.map((a, i) =>
+                  i === indice ? null : (
+                    <option key={a.id} value={i}>
+                      Análisis {i + 1} · {fechaCorta(a.fecha)}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+          )}
+          <ol className="scroll max-h-[50vh] overflow-y-auto py-1">
+            {[...analisis].map((a, i) => ({ a, i })).reverse().map(({ a, i }) => {
+              const viendo = i === indice;
+              const esBase = i === base && base !== indice;
+              const nv = NIVELES[nivelRiesgo(a.resumen.porcentaje_bots)];
+              return (
+                <li key={a.id}>
+                  <button
+                    type="button"
+                    aria-current={viendo}
+                    onClick={() => onVer(i)}
+                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-[#26262c] ${viendo ? "bg-[#9147ff]/10" : ""}`}
+                  >
+                    <span className={`h-9 w-1 shrink-0 rounded-full ${viendo ? "bg-[#9147ff]" : esBase ? "bg-[#53535f]" : "bg-transparent"}`} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5 text-sm font-semibold">
+                        Análisis {i + 1}
+                        {viendo && <span className="rounded bg-[#9147ff] px-1.5 text-[10px] font-bold uppercase text-white">Viendo</span>}
+                        {esBase && <span className="rounded bg-[#3a3a3d] px-1.5 text-[10px] font-bold uppercase">Base</span>}
+                      </span>
+                      <span className="block text-xs text-[#adadb8]">
+                        {fechaCompleta(a.fecha)} · {a.resumen.comentarios} comentarios
+                      </span>
+                    </span>
+                    <span className={`text-lg font-extrabold tabular ${nv.texto}`}>{a.resumen.porcentaje_bots}%</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <div className="border-t border-[#2f2f35] p-2">
+            <button
+              type="button"
+              onClick={onNuevo}
+              className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-[#9147ff] text-sm font-semibold text-white hover:bg-[#772ce8]"
+            >
+              <Icono nombre="mas" className="size-4" />
+              Nuevo análisis
+            </button>
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
+
+function LateralCuentas({ cuentas, nuevas, autor, onElegir, abierto, setAbierto }) {
+  const marcadas = cuentas.filter((c) => c.clasificacion !== "real").length;
+  return (
+    <aside
+      className={`hidden h-full shrink-0 flex-col bg-[#1f1f23] transition-[width] lg:flex ${abierto ? "w-60" : "w-[50px]"}`}
+      aria-label="Cuentas en los comentarios"
+    >
+      <div className={`flex h-11 shrink-0 items-center ${abierto ? "justify-between pl-3 pr-1.5" : "justify-center"}`}>
+        {abierto && (
+          <h2 className="min-w-0 truncate text-sm font-semibold">
+            Quién comenta
+            <span className="ml-1.5 font-normal text-[#adadb8] tabular">
+              {cuentas.length}
+            </span>
+          </h2>
+        )}
+        <button
+          type="button"
+          onClick={() => setAbierto((valor) => !valor)}
+          aria-label={abierto ? "Contraer barra lateral" : "Expandir barra lateral"}
+          className="flex size-8 shrink-0 items-center justify-center rounded hover:bg-[#2f2f35]"
+        >
+          <Icono nombre={abierto ? "colapsar" : "expandir"} className="size-4" />
+        </button>
+      </div>
+      {abierto && marcadas > 0 && (
+        <p className="px-3 pb-2 text-xs text-[#ff8280]">{marcadas} marcadas como bot o sospechosas</p>
+      )}
+      <ul className="scroll min-h-0 flex-1 overflow-y-auto pb-3">
+        {cuentas.map((cuenta) => {
+          const estado =
+            cuenta.clasificacion === "bot"
+              ? [`Bot · ${cuenta.riesgo}%`, "text-[#ff8280]", "bg-[#eb0400]"]
+              : cuenta.clasificacion === "sospechoso"
+                ? [`Sospechosa · ${cuenta.riesgo}%`, "text-[#ffca5f]", "bg-[#ffb31a]"]
+                : ["Usuario real", "text-[#adadb8]", "bg-[#00c76f]"];
+          const activa = autor === cuenta.autor;
+          const nueva = nuevas?.has(cuenta.autor);
+          return (
+            <li key={cuenta.autor}>
+              <button
+                type="button"
+                aria-pressed={activa}
+                title={abierto ? `Ver comentarios de ${cuenta.autor}` : `${cuenta.autor} · ${estado[0]}`}
+                onClick={() => onElegir(cuenta.autor)}
+                className={`flex w-full items-center gap-2.5 py-1.5 text-left hover:bg-[#26262c] ${abierto ? "px-2.5" : "justify-center"} ${
+                  activa ? "bg-[#2f2f35]" : ""
+                }`}
+              >
+                <span className="relative shrink-0">
+                  <Avatar nombre={cuenta.autor} tam="sm" />
+                  {!abierto && (
+                    <span className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-[#1f1f23] ${estado[2]}`} />
+                  )}
+                </span>
+                {abierto && (
+                  <>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{cuenta.autor}</span>
+                      <span className={`flex min-w-0 items-center gap-1 text-xs ${estado[1]}`}>
+                        <span className="truncate">{estado[0]}</span>
+                        {nueva && <span className="shrink-0 rounded-sm bg-[#9147ff] px-1 text-[9px] font-extrabold uppercase text-white">Nueva</span>}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1.5 text-xs tabular">
+                      <span className={`size-2 rounded-full ${estado[2]}`} />
+                      {cuenta.comentarios}
+                    </span>
+                  </>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </aside>
   );
 }
