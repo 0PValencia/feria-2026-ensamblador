@@ -135,6 +135,39 @@ const TRAZOS = {
   colapsar: <path d="M15 6l-6 6 6 6M5 5v14" />,
   expandir: <path d="M9 6l6 6-6 6M19 5v14" />,
   flechaAbajo: <path d="M12 5v14M6 13l6 6 6-6" />,
+  izquierda: <path d="m15 5-7 7 7 7" />,
+  derecha: <path d="m9 5 7 7-7 7" />,
+  abajo: <path d="m6 9 6 6 6-6" />,
+  externo: <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />,
+  youtube: (
+    <>
+      <rect x="2.5" y="5.5" width="19" height="13" rx="4" />
+      <path d="m10 9.2 5 2.8-5 2.8z" fill="currentColor" />
+    </>
+  ),
+  basura: <path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l1 12.5a1 1 0 0 0 1 .9h7a1 1 0 0 0 1-.9l1-12.5M9.5 7V4.5h5V7" />,
+  historial: (
+    <>
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" />
+      <path d="M3.5 4.5V9H8M12 8v4.5l3 2" />
+    </>
+  ),
+  comparar: <path d="M7 4v13M7 17l-3-3M7 17l3-3M17 20V7M17 7l-3 3M17 7l3 3" />,
+  subir: <path d="m6 15 6-6 6 6" />,
+  bajar: <path d="m6 9 6 6 6-6" />,
+  comentarios: (
+    <>
+      <path d="M4 5.5h12a1 1 0 0 1 1 1V13a1 1 0 0 1-1 1H9l-3.5 3v-3H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1z" />
+      <path d="M20 9v7.5a1 1 0 0 1-1 1h-1.5V20L14 17.5" />
+    </>
+  ),
+  menu: (
+    <>
+      {punto(12, 5.5)}
+      {punto(12, 12)}
+      {punto(12, 18.5)}
+    </>
+  ),
 };
 
 export function Marca({ compacta = false }) {
